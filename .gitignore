@@ -16,6 +16,15 @@ coverage/
 .env
 .env.*
 
+# Local credentials
+.yuque/
+.npmrc
+.netrc
+*.pem
+*.key
+*.p12
+*.pfx
+
 # OS / Editor files
 .DS_Store
 Thumbs.db
