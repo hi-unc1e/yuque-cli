@@ -1,5 +1,6 @@
 import readline from 'node:readline';
 import process from 'node:process';
+import { readFileSync } from 'node:fs';
 import chalk from 'chalk';
 import figures from 'figures';
 
@@ -13,6 +14,10 @@ import {
   searchDocs,
   createDoc
 } from './commands.js';
+
+const packageJson = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8')
+);
 
 const ICON = {
   ok: chalk.greenBright(figures.tick || 'OK'),
@@ -57,7 +62,7 @@ function banner(user) {
   const line = chalk.gray('-'.repeat(64));
   return [
     line,
-    `${chalk.bold.cyan('Yuque CLI')} ${chalk.dim('(v0.1.0)')}`,
+    `${chalk.bold.cyan('Yuque CLI')} ${chalk.dim(`(v${packageJson.version})`)}`,
     user ? `Connected as: ${chalk.bold(user)}` : 'Not authenticated',
     `${chalk.gray('Type')} ${cliCmd('help')} ${chalk.gray('to see commands,')} ${cliCmd('exit')} ${chalk.gray('to leave.')}`,
     line

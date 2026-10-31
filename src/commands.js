@@ -6,7 +6,11 @@ import {
   listDocs as apiListDocs,
   searchDocs as apiSearchDocs,
   getDoc,
-  createDoc as apiCreateDoc
+  getRepo as apiGetRepo,
+  createDoc as apiCreateDoc,
+  updateDoc as apiUpdateDoc,
+  deleteDoc as apiDeleteDoc,
+  apiRequest as apiRawRequest
 } from './api.js';
 
 export function createCommands(deps = {}) {
@@ -16,46 +20,66 @@ export function createCommands(deps = {}) {
     listDocsFn = apiListDocs,
     searchDocsFn = apiSearchDocs,
     getDocFn = getDoc,
+    getRepoFn = apiGetRepo,
     createDocFn = apiCreateDoc,
+    updateDocFn = apiUpdateDoc,
+    deleteDocFn = apiDeleteDoc,
+    apiRequestFn = apiRawRequest,
     splitRepoDocFn = splitRepoDoc,
     openUrlFn = open
   } = deps;
 
-  async function whoami() {
-    return await getUserFn();
+  async function whoami(options) {
+    return await getUserFn(options);
   }
 
-  async function listRepos() {
-    return await listReposFn();
+  async function listRepos(options) {
+    return await listReposFn(options);
   }
 
-  async function listDocs(repo) {
-    return await listDocsFn(repo);
+  async function listDocs(repo, options) {
+    return await listDocsFn(repo, options);
   }
 
-  async function searchDocs(repo, q) {
-    return await searchDocsFn(repo, q);
+  async function searchDocs(repo, q, options) {
+    return await searchDocsFn(repo, q, options);
   }
 
-  async function openDoc(input, fallbackRepo = null) {
+  async function openDoc(input, fallbackRepo = null, options = {}) {
     const parsed = splitRepoDocFn(input);
     const repo = parsed?.repo || fallbackRepo;
     const slug = parsed?.doc || input;
     if (!repo || !slug) {
       throw new Error('Use <repo>/<doc> format or set current repo');
     }
-    const doc = await getDocFn(repo, slug);
+    const doc = await getDocFn(repo, slug, options);
     const finalUrl = doc?.url || `https://www.yuque.com/${repo}/${slug}`;
     await openUrlFn(finalUrl);
     return { ...(doc || {}), url: finalUrl };
   }
 
-  async function readDoc(repo, slug) {
-    return await getDocFn(repo, slug);
+  async function readDoc(repo, slug, options) {
+    return await getDocFn(repo, slug, options);
   }
 
-  async function createDoc(repo, payload) {
-    return await createDocFn(repo, payload);
+  async function readRepo(repo, options) {
+    return await getRepoFn(repo, options);
+  }
+
+  async function createDoc(repo, payload, options) {
+    return await createDocFn(repo, payload, options);
+  }
+
+  async function updateDoc(repo, slug, payload, options) {
+    return await updateDocFn(repo, slug, payload, options);
+  }
+
+  async function deleteDoc(repo, slug, options) {
+    return await deleteDocFn(repo, slug, options);
+  }
+
+  async function apiRequest(method, path, options) {
+    return await apiRequestFn(method, path, options);
   }
 
   return {
@@ -65,7 +89,11 @@ export function createCommands(deps = {}) {
     searchDocs,
     openDoc,
     readDoc,
-    createDoc
+    readRepo,
+    createDoc,
+    updateDoc,
+    deleteDoc,
+    apiRequest
   };
 }
 
@@ -78,5 +106,9 @@ export const {
   searchDocs,
   openDoc,
   readDoc,
-  createDoc
+  readRepo,
+  createDoc,
+  updateDoc,
+  deleteDoc,
+  apiRequest
 } = defaultCommands;

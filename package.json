@@ -1,15 +1,40 @@
 {
   "name": "yuque-cli",
-  "version": "0.1.1",
-  "description": "Interactive Yuque CLI",
+  "version": "0.2.0",
+  "description": "Interactive and scriptable REST-style client for the Yuque Open API",
   "type": "module",
   "bin": {
     "yuque": "src/index.js"
   },
+  "files": [
+    "src",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=18"
   },
   "author": "Barret Lee <barret.lee@gmail.com>",
+  "contributors": [
+    "Henry <67778054+hi-unc1e@users.noreply.github.com>"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hi-unc1e/yuque-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hi-unc1e/yuque-cli/issues"
+  },
+  "homepage": "https://github.com/hi-unc1e/yuque-cli#readme",
+  "keywords": [
+    "yuque",
+    "cli",
+    "rest",
+    "knowledge-base",
+    "documentation"
+  ],
   "preferGlobal": true,
   "scripts": {
     "start": "node src/index.js",

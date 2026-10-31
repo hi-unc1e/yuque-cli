@@ -112,3 +112,44 @@ test('readDoc delegates to getDoc function', async () => {
   const doc = await c.readDoc('a/b', 'd1');
   assert.deepEqual(doc, { slug: 'd1', body: '# hi' });
 });
+
+test('repo and document mutations forward runtime options', async () => {
+  const calls = [];
+  const options = { endpoint: 'https://example.test' };
+  const c = createCommands({
+    getRepoFn: async (repo, received) => {
+      calls.push(['getRepo', repo, received]);
+      return { namespace: repo };
+    },
+    createDocFn: async (repo, payload, received) => {
+      calls.push(['createDoc', repo, payload, received]);
+      return { slug: 's' };
+    },
+    updateDocFn: async (repo, slug, payload, received) => {
+      calls.push(['updateDoc', repo, slug, payload, received]);
+      return { slug };
+    },
+    deleteDocFn: async (repo, slug, received) => {
+      calls.push(['deleteDoc', repo, slug, received]);
+      return null;
+    },
+    apiRequestFn: async (method, path, received) => {
+      calls.push(['apiRequest', method, path, received]);
+      return { data: {} };
+    }
+  });
+
+  await c.readRepo('a/b', options);
+  await c.createDoc('a/b', { title: 't' }, options);
+  await c.updateDoc('a/b', 's', { body: 'x' }, options);
+  await c.deleteDoc('a/b', 's', options);
+  await c.apiRequest('GET', '/user', options);
+
+  assert.deepEqual(calls, [
+    ['getRepo', 'a/b', options],
+    ['createDoc', 'a/b', { title: 't' }, options],
+    ['updateDoc', 'a/b', 's', { body: 'x' }, options],
+    ['deleteDoc', 'a/b', 's', options],
+    ['apiRequest', 'GET', '/user', options]
+  ]);
+});

@@ -124,12 +124,137 @@ test('createDoc posts JSON body and getDoc returns data', async () => {
   assert.equal(seen[0].options.body, JSON.stringify({ title: 't', slug: 's1', body: 'x' }));
 });
 
-test('throws NO_TOKEN when auth missing', async () => {
+test('throws AUTH_ERROR when auth missing', async () => {
   delete process.env.YUQUE_TOKEN;
   global.fetch = async () => jsonResponse(200, { data: [] });
 
   await assert.rejects(
     () => api.listRepos(),
-    (err) => err && err.code === 'NO_TOKEN'
+    (err) => {
+      assert.equal(err.code, 'AUTH_ERROR');
+      assert.equal(err.exitCode, 3);
+      return true;
+    }
+  );
+});
+
+test('updateDoc and deleteDoc use REST methods and JSON bodies', async () => {
+  const seen = [];
+  global.fetch = async (url, options) => {
+    const request = { url: String(url), options };
+    seen.push(request);
+    if (request.options.method === 'GET') {
+      return jsonResponse(200, { data: { id: 42, slug: 's1' } });
+    }
+    return jsonResponse(200, { data: { id: 42, slug: 's1' } });
+  };
+
+  const updated = await api.updateDoc('a/b', 's1', { title: 'New title' });
+  const deleted = await api.deleteDoc('a/b', 's1');
+
+  assert.deepEqual(updated, { id: 42, slug: 's1' });
+  assert.deepEqual(deleted, { id: 42, slug: 's1' });
+  assert.deepEqual(
+    seen.map(({ options }) => options.method),
+    ['GET', 'PUT', 'GET', 'DELETE']
+  );
+  assert.equal(seen[1].options.body, JSON.stringify({ title: 'New title' }));
+  assert.equal(seen[3].options.body, undefined);
+  assert.match(seen[0].url, /\/repos\/a\/b\/docs\/s1$/);
+  assert.match(seen[1].url, /\/repos\/a\/b\/docs\/42$/);
+  assert.match(seen[2].url, /\/repos\/a\/b\/docs\/s1$/);
+  assert.match(seen[3].url, /\/repos\/a\/b\/docs\/42$/);
+});
+
+test('updateDoc and deleteDoc accept numeric document IDs without a lookup', async () => {
+  const methods = [];
+  global.fetch = async (_url, options) => {
+    methods.push(options.method);
+    return jsonResponse(200, { data: { id: 42 } });
+  };
+
+  await api.updateDoc('a/b', 42, { title: 'New title' });
+  await api.deleteDoc('a/b', '42');
+
+  assert.deepEqual(methods, ['PUT', 'DELETE']);
+});
+
+test('getRepo encodes the repository path', async () => {
+  let requestedUrl;
+  global.fetch = async (url) => {
+    requestedUrl = String(url);
+    return jsonResponse(200, { data: { namespace: 'a/b' } });
+  };
+
+  assert.deepEqual(await api.getRepo('a/b'), { namespace: 'a/b' });
+  assert.match(requestedUrl, /\/api\/v2\/repos\/a\/b$/);
+});
+
+test('apiRequest preserves the full response and serializes query values', async () => {
+  let requestedUrl;
+  global.fetch = async (url) => {
+    requestedUrl = String(url);
+    return jsonResponse(200, { data: { total: 2 } });
+  };
+
+  const result = await api.apiRequest('GET', '/search', {
+    params: { q: 'hello world', tag: ['a', 'b'] }
+  });
+
+  assert.deepEqual(result, { data: { total: 2 } });
+  const url = new URL(requestedUrl);
+  assert.equal(url.searchParams.get('q'), 'hello world');
+  assert.deepEqual(url.searchParams.getAll('tag'), ['a', 'b']);
+});
+
+test('request rejects unsupported HTTP methods before calling fetch', async () => {
+  let called = false;
+  global.fetch = async () => {
+    called = true;
+    return jsonResponse(200, {});
+  };
+
+  await assert.rejects(
+    () => api.apiRequest('TRACE', '/user'),
+    (err) => err?.code === 'USAGE_ERROR'
+  );
+  assert.equal(called, false);
+});
+
+test('repository and raw API paths reject malformed traversal', async () => {
+  await assert.rejects(
+    () => api.getRepo('a/b/c'),
+    (err) => err?.code === 'USAGE_ERROR'
+  );
+  await assert.rejects(
+    () => api.apiRequest('GET', '/../user'),
+    (err) => err?.code === 'USAGE_ERROR'
+  );
+  await assert.rejects(
+    () => api.apiRequest('GET', '/%2e%2e/user'),
+    (err) => err?.code === 'USAGE_ERROR'
+  );
+});
+
+test('request maps HTTP errors to standard CLI errors', async () => {
+  global.fetch = async () => jsonResponse(404, { message: 'No such doc' });
+  await assert.rejects(
+    () => api.getDoc('a/b', 'missing'),
+    (err) => {
+      assert.equal(err.code, 'NOT_FOUND');
+      assert.equal(err.exitCode, 4);
+      assert.equal(err.status, 404);
+      return true;
+    }
+  );
+
+  global.fetch = async () => jsonResponse(429, { message: 'Slow down' });
+  await assert.rejects(
+    () => api.apiRequest('POST', '/repos/a/b/docs', { retries: 0 }),
+    (err) => {
+      assert.equal(err.code, 'RATE_LIMITED');
+      assert.equal(err.exitCode, 5);
+      return true;
+    }
   );
 });

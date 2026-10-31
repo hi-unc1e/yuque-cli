@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import os from 'node:os';
-import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
@@ -18,7 +18,10 @@ test('bin entry works when invoked through a symlink', () => {
     });
 
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /0\.1\.0/);
+    const packageJson = JSON.parse(
+      readFileSync(new URL('../package.json', import.meta.url), 'utf8')
+    );
+    assert.equal(result.stdout.trim(), packageJson.version);
   } finally {
     rmSync(tmpDir, { recursive: true, force: true });
   }
